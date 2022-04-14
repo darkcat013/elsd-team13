@@ -22,7 +22,20 @@ if (SyntaxErrorListener.HasError)
 }
 else
 {
-    var visitor = new StoryVisitor();
-    visitor.Visit(program);
+    var semanticCheck = new InitialVisitor();
+    semanticCheck.Visit(program);
 
+    if (semanticCheck.SemanticErrors.Count > 0)
+    {
+        foreach (var message in semanticCheck.SemanticErrors)
+        {
+            Console.WriteLine(message);
+        }
+    }
+    else
+    {
+        var visitor = new StoryVisitor(semanticCheck);
+        visitor.Visit(program);
+        Console.WriteLine("done");
+    }
 }

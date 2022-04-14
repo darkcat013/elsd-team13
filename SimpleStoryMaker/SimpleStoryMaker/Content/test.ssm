@@ -1,3 +1,51 @@
-﻿"insert d": d;
-"insert a": a;
-"take a guess": 4;
+﻿PLAYER{
+    name:"vasea";
+    hp:100;
+    ad:true == false;
+}
+
+SCENE START{
+    write:"hello";
+    choices{
+        r{
+            text:"Go right";
+            goto: START;
+        }
+        left{
+            text:"Go left";
+            goto: left;
+        }
+    }
+}
+
+SCENE left{
+    write:"the left";
+    choices{
+        f{
+            text: "go further";
+            goto:further;
+        }
+    }
+}
+
+SCENE further{
+    write:"go to end or the start";
+    choices{
+        x{
+            text:"go end";
+            goto:almostEnd;
+        }
+        start{
+            text:"go start";
+            goto:START;
+        }
+    }
+}
+
+SCENE almostEnd{
+    write:"Almost there";
+    goto: END;
+}
+SCENE END{
+    write:"you've reached the end";
+}
