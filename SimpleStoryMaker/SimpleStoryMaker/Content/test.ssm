@@ -1,18 +1,18 @@
 ﻿PLAYER{
-    name:"vasea";
+    name:"";
     hp:100;
     ad:true == false;
 }
 
-var asd = PLAYER.name;
+var asd = PLAYER.name + 2;
 var b = true;
 var c = asd + b;
 
 SCENE START{
-    write:"hello " + c;
+    write:"";
     choices{
         r{
-            text:"Go right " + PLAYER.name;
+            text:"Go right " + PLAYER.name + 2;
             goto: START;
         }
         left{

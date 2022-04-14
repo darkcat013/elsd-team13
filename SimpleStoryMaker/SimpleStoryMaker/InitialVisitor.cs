@@ -14,7 +14,7 @@ namespace SimpleStoryMaker
         public List<string> SemanticErrors { get; private set; } = new();
         public Dictionary<string, object> Variables { get; set; } = new();
 
-        private List<StoryParser.GoToContext> _goTos = new();
+        private readonly List<StoryParser.GoToContext> _goTos = new();
 
         public override object? VisitAttribute(StoryParser.AttributeContext context)
         {
