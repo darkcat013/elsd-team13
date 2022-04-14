@@ -1,4 +1,5 @@
 ﻿using Antlr4.Runtime;
+using Antlr4.Runtime.Misc;
 using SimpleStoryMaker.Content;
 
 namespace SimpleStoryMaker
@@ -10,16 +11,21 @@ namespace SimpleStoryMaker
         public List<StoryParser.SceneContext> Scenes { get; set; } = new();
         public StoryParser.EndContext? EndScene { get; set; }
         public List<string> ScenesNames { get; set; } = new();
-        public List<string> SemanticErrors { get; set; } = new();
+        public List<string> SemanticErrors { get; private set; } = new();
+        public Dictionary<string, object> Variables { get; set; } = new();
+
         private List<StoryParser.GoToContext> _goTos = new();
+
         public override object? VisitAttribute(StoryParser.AttributeContext context)
         {
             var key = context.IDENTIFIER().GetText();
 
             if (Player.ContainsKey(key))
                 AddError(context.IDENTIFIER().Symbol, $"Duplicate player attribute: '{key}'");
-
-            Player[key] = default;
+            else
+            {
+                Player[key] = Visit(context.expression());
+            }
             return base.VisitAttribute(context);
         }
         public override object? VisitStart(StoryParser.StartContext context)
@@ -107,6 +113,15 @@ namespace SimpleStoryMaker
                     default:
                         break;
                 }
+            else
+            {
+                return op switch
+                {
+                    "*" => Multiply(left, right),
+                    "/" => Divide(left, right),
+                    _ => throw new NotImplementedException()
+                };
+            }
             
             return base.VisitMultiplicativeExpression(context);
         }
@@ -130,6 +145,15 @@ namespace SimpleStoryMaker
                     default:
                         break;
                 }
+            else
+            {
+                return op switch
+                {
+                    "+" => Add(left, right),
+                    "-" => Subtract(left, right),
+                    _ => throw new NotImplementedException()
+                };
+            }
 
             return base.VisitAdditiveExpression(context);
         }
@@ -150,11 +174,71 @@ namespace SimpleStoryMaker
             {
                 AddError(context.expression(0).Start, $"Cannot compare values of types '{left?.GetType()}' and '{right?.GetType()}'");
             }
+            else
+            {
+                return op switch
+                {
+                    "==" => Equal(left, right),
+                    "!=" => Different(left, right),
+                    ">" => GreaterThan(left, right),
+                    "<" => LessThan(left, right),
+                    ">=" => GreaterThanOrEqual(left, right),
+                    "<=" => LessThanOrEqual(left, right),
+                    _ => throw new NotImplementedException()
+                };
+            }
 
             return base.VisitComparisonExpression(context);
         }
 
-        #region private methods
+        public override object? VisitPlayerCallExpression(StoryParser.PlayerCallExpressionContext context)
+        {
+            var key = context.IDENTIFIER().Symbol;
+            if (!Player.ContainsKey(key.Text))
+                AddError(key, $"Player attribute not declared: '{key.Text}'");
+            else
+            {
+                return Player[context.IDENTIFIER().GetText()];
+            }
+            return base.VisitPlayerCallExpression(context);
+        }
+
+        public override object? VisitVariableDeclaration(StoryParser.VariableDeclarationContext context)
+        {
+            var variable = context.assignment().IDENTIFIER().Symbol;
+            if (Variables.ContainsKey(variable.Text))
+                AddError(variable, $"Variable already declared: '{variable.Text}'");
+            else
+            {
+                Variables[variable.Text] = Visit(context.assignment().expression())!;
+            }
+            return base.VisitVariableDeclaration(context);
+        }
+
+        public override object? VisitAssignment(StoryParser.AssignmentContext context)
+        {
+            var variable = context.IDENTIFIER().Symbol;
+            if (!Variables.ContainsKey(variable.Text))
+                AddError(variable, $"Variable does not exist: '{variable.Text}'");
+            else
+            {
+                Variables[variable.Text] = Visit(context.expression())!;
+            }
+            return base.VisitAssignment(context);
+        }
+
+        public override object? VisitVariableCallExpression(StoryParser.VariableCallExpressionContext context)
+        {
+            var variable = context.IDENTIFIER().Symbol;
+            if (!Variables.ContainsKey(variable.Text))
+                AddError(variable, $"Variable does not exist: '{variable.Text}'");
+            else if (Variables[variable.Text] is null)
+                AddError(variable, $"Variable not initialized: '{variable.Text}'");
+            else
+                return Variables[variable.Text];
+            return base.VisitVariableCallExpression(context);
+        }
+        #region protected methods
         private static (int, int) GetPosition(IToken symbol)
         {
             return (symbol.Line, symbol.Column + 1);
@@ -163,7 +247,8 @@ namespace SimpleStoryMaker
         private void AddError(IToken? symbol, string msg)
         {
             var (line, column) = GetPosition(symbol!);
-            SemanticErrors.Add($"Semantic error(line: {line}, column: {column}): {msg}");
+            var error = $"Semantic error(line: {line}, column: {column}): {msg}";
+            if(!SemanticErrors.Contains(error))SemanticErrors.Add(error);
         }
 
         private void AddErrorsForGoTos()
@@ -175,6 +260,82 @@ namespace SimpleStoryMaker
                     AddError(symbol,$"Scene '{symbol.Text}' does not exist.");
             }
         }
+
+        protected static object? Multiply(object? left, object? right)
+        {
+            if (left is double l && right is double r)
+                return l * r;
+
+            throw new NotImplementedException();
+        }
+        protected static object? Divide(object? left, object? right)
+        {
+            if (left is double l && right is double r)
+                return l / r;
+
+            throw new NotImplementedException();
+        }
+
+        protected static object? Add(object? left, object? right)
+        {
+            if (left is double l && right is double r)
+                return l + r;
+
+            if (left is string || right is string)
+                return $"{left}{right}";
+
+            throw new NotImplementedException();
+        }
+
+        protected static object? Subtract(object? left, object? right)
+        {
+            if (left is double l && right is double r)
+                return l - r;
+
+            throw new NotImplementedException();
+        }
+
+        protected static bool Equal(object? left, object? right)
+        {
+            if (left is double l && right is double r)
+                return l == r;
+
+            if (left is string ls && right is string rs)
+                return ls.Equals(rs);
+
+            if (left is bool lb && right is bool rb)
+                return lb == rb;
+
+            throw new NotImplementedException();
+        }
+
+        protected static bool Different(object? left, object? right) => !Equal(left, right);
+
+        protected static bool GreaterThan(object? left, object? right)
+        {
+            if (left is double l && right is double r)
+                return l > r;
+
+            if (left is string ls && right is string rs)
+                return string.Compare(ls, rs) > 0;
+
+            throw new NotImplementedException();
+        }
+
+        protected static bool LessThan(object? left, object? right)
+        {
+            if (left is double l && right is double r)
+                return l < r;
+
+            if (left is string ls && right is string rs)
+                return string.Compare(ls, rs) < 0;
+
+            throw new NotImplementedException();
+        }
+
+        protected static bool GreaterThanOrEqual(object? left, object? right) => !LessThan(left, right);
+
+        protected static bool LessThanOrEqual(object? left, object? right) => !GreaterThan(left, right);
         #endregion
     }
 }

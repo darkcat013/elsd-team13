@@ -4,15 +4,19 @@
     ad:true == false;
 }
 
+var asd = PLAYER.name;
+var b = true;
+var c = asd + b;
+
 SCENE START{
-    write:"hello";
+    write:"hello " + c;
     choices{
         r{
-            text:"Go right";
+            text:"Go right " + PLAYER.name;
             goto: START;
         }
         left{
-            text:"Go left";
+            text:"Go left " + asd;
             goto: left;
         }
     }

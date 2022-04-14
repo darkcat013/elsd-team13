@@ -1,6 +1,6 @@
 ﻿grammar Story;
 
-program: player start scene* end EOF;
+program: player code* story EOF;
 
 player: 'PLAYER''{'attribute*'}';
 
@@ -8,7 +8,8 @@ attribute: IDENTIFIER ':' expression';';
 
 expression
     : literal                           #literalExpression
-    | variableCall                      #variableCallExpression
+    | 'PLAYER.'IDENTIFIER               #playerCallExpression
+    | IDENTIFIER                        #variableCallExpression
     | '(' expression ')'                #paranthesizedExpression
     | '!' expression                    #notExpression
     | expression MULTOP expression      #multiplicativeExpression
@@ -16,6 +17,13 @@ expression
     | expression COMPAREOP expression   #comparisonExpression
     | expression BOOLOP expression      #booleanExpression
     ;
+
+code: variableDeclaration | assignment;
+
+variableDeclaration: 'var 'assignment;
+assignment: IDENTIFIER '=' expression ';';
+
+story: start scene* end;
 
 start: SCENE START'{'write (choices | goTo)'}';
 end: SCENE END'{'write'}';
@@ -30,8 +38,6 @@ choice: IDENTIFIER'{'choiceText goTo'}';
 choiceText: 'text'':'expression';';
 
 goTo: 'goto'':'(IDENTIFIER | START | END)';';
-
-variableCall: IDENTIFIER('.'IDENTIFIER)*;
 
 literal: number | STRING | BOOL;
 
