@@ -46,7 +46,7 @@ namespace SimpleStoryMaker
             var sceneName = context.IDENTIFIER().GetText();
 
             if (ScenesNames.Contains(sceneName))
-                AddError(context.IDENTIFIER().Symbol,$"Duplicate scene name: '{sceneName}'");
+                AddError(context.IDENTIFIER().Symbol, $"Duplicate scene name: '{sceneName}'");
 
             ScenesNames.Add(sceneName);
             Scenes.Add(context);
@@ -69,7 +69,7 @@ namespace SimpleStoryMaker
                 else if (context.Parent is StoryParser.SceneContext sc)
                     symbol = sc.IDENTIFIER().Symbol;
 
-                AddError(symbol,$"Duplicate choice option in scene: '{symbol?.Text}'");
+                AddError(symbol, $"Duplicate choice option in scene: '{symbol?.Text}'");
             }
 
             return base.VisitChoices(context);
@@ -122,11 +122,11 @@ namespace SimpleStoryMaker
                     _ => throw new NotImplementedException()
                 };
             }
-            
+
             return base.VisitMultiplicativeExpression(context);
         }
 
-        
+
         public override object? VisitParanthesizedExpression(StoryParser.ParanthesizedExpressionContext context)
         {
             return Visit(context.expression());
@@ -166,11 +166,11 @@ namespace SimpleStoryMaker
             var op = context.COMPAREOP().GetText();
 
             var sameType = left?.GetType() == right?.GetType();
-            if(!sameType)
+            if (!sameType)
             {
                 AddError(context.expression(0).Start, $"Cannot compare values of types '{left?.GetType()}' and '{right?.GetType()}'");
             }
-            else if(left is bool && !(op == "==" || op == "!="))
+            else if (left is bool && !(op == "==" || op == "!="))
             {
                 AddError(context.expression(0).Start, $"Cannot compare values of types '{left?.GetType()}' and '{right?.GetType()}'");
             }
@@ -238,6 +238,57 @@ namespace SimpleStoryMaker
                 return Variables[variable.Text];
             return base.VisitVariableCallExpression(context);
         }
+
+        public override object? VisitNegativeExpression(StoryParser.NegativeExpressionContext context)
+        {
+            var value = Visit(context.expression());
+            if (value is double d)
+                return -d;
+            else
+            {
+                var symbol = context.expression().Start;
+                AddError(symbol, $"Expression of type {value?.GetType()} cannot be negated.");
+            }
+            return base.VisitNegativeExpression(context);
+        }
+
+        public override object? VisitNotExpression(StoryParser.NotExpressionContext context)
+        {
+            var value = Visit(context.expression());
+            if (value is bool b)
+                return !b;
+            else
+            {
+                var symbol = context.expression().Start;
+                AddError(symbol, $"Expression of type {value?.GetType()} cannot be negated.");
+            }
+            return base.VisitNotExpression(context);
+        }
+
+        public override object? VisitBooleanExpression(StoryParser.BooleanExpressionContext context)
+        {
+            var left = Visit(context.expression(0));
+            var right = Visit(context.expression(1));
+
+            var op = context.BOOLOP().GetText();
+
+            var bothBool = left is bool && right is bool;
+            if(bothBool)
+            {
+                return op switch
+                {
+                    "and" => (bool)left! && (bool)right!,
+                    "or" => (bool)left! || (bool)right!,
+                    _ => throw new NotImplementedException()
+                };
+            }
+            else
+            {
+                var symbol = context.expression(0).Start;
+                AddError(symbol, $"Cannot do boolean operation on values of types '{left?.GetType()}' and '{right?.GetType()}'");
+            }
+            return base.VisitBooleanExpression(context);
+        }
         #region protected methods
         private static (int, int) GetPosition(IToken symbol)
         {
@@ -248,16 +299,16 @@ namespace SimpleStoryMaker
         {
             var (line, column) = GetPosition(symbol!);
             var error = $"Semantic error(line: {line}, column: {column}): {msg}";
-            if(!SemanticErrors.Contains(error))SemanticErrors.Add(error);
+            if (!SemanticErrors.Contains(error)) SemanticErrors.Add(error);
         }
 
         private void AddErrorsForGoTos()
         {
-            foreach(var goTo in _goTos)
+            foreach (var goTo in _goTos)
             {
                 var symbol = goTo.IDENTIFIER().Symbol;
-                if(!ScenesNames.Contains(symbol.Text))
-                    AddError(symbol,$"Scene '{symbol.Text}' does not exist.");
+                if (!ScenesNames.Contains(symbol.Text))
+                    AddError(symbol, $"Scene '{symbol.Text}' does not exist.");
             }
         }
 

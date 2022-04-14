@@ -152,5 +152,37 @@ namespace SimpleStoryMaker
         {
             return Variables[context.IDENTIFIER().GetText()];
         }
+
+        public override object? VisitNegativeExpression(StoryParser.NegativeExpressionContext context)
+        {
+            var value = Visit(context.expression());
+            if (value is double d)
+                return -d;
+
+            throw new NotImplementedException();
+        }
+
+        public override object? VisitNotExpression(StoryParser.NotExpressionContext context)
+        {
+            var value = Visit(context.expression());
+            if (value is bool b)
+                return !b;
+            throw new NotImplementedException();
+        }
+
+        public override object? VisitBooleanExpression(StoryParser.BooleanExpressionContext context)
+        {
+            var left = Visit(context.expression(0));
+            var right = Visit(context.expression(1));
+
+            var op = context.BOOLOP().GetText();
+
+            return op switch
+            {
+                "and" => (bool)left! && (bool)right!,
+                "or" => (bool)left! || (bool)right!,
+                _ => throw new NotImplementedException()
+            };
+        }
     }
 }

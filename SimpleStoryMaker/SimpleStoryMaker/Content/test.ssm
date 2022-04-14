@@ -4,15 +4,15 @@
     ad:true == false;
 }
 
-var asd = PLAYER.name + 2;
-var b = true;
-var c = asd + b;
+var asd = !(true or true);
+var c = 100;
+var b = -(2 * c / 5);
 
 SCENE START{
     write:"";
     choices{
         r{
-            text:"Go right " + PLAYER.name + 2;
+            text:"Go right " + b;
             goto: START;
         }
         left{

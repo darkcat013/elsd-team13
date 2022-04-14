@@ -11,6 +11,7 @@ expression
     | 'PLAYER.'IDENTIFIER               #playerCallExpression
     | IDENTIFIER                        #variableCallExpression
     | '(' expression ')'                #paranthesizedExpression
+    | '-' expression                    #negativeExpression
     | '!' expression                    #notExpression
     | expression MULTOP expression      #multiplicativeExpression
     | expression ADDOP expression       #additiveExpression
