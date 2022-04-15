@@ -8,6 +8,11 @@ var fileContents = File.ReadAllText(fileName);
 
 var inputStream = new AntlrInputStream(fileContents);
 var storyLexer = new StoryLexer(inputStream);
+//var a = storyLexer.GetAllTokens();
+//foreach (var item in a)
+//{
+//    Console.WriteLine($"{storyLexer.RuleNames[item.Type - 1]}: {item.Text}");
+//}
 var commonTokenStream = new CommonTokenStream(storyLexer);
 
 var storyParser = new StoryParser(commonTokenStream);

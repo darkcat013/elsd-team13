@@ -1,0 +1,91 @@
+grammar Story;
+
+program: player code* story EOF;
+
+player: PLAYER LBRACE attribute* RBRACE;
+
+attribute: IDENTIFIER COLON expression SEMICOLON;
+
+expression
+    : literal                           #literalExpression
+    | PLAYERCALL IDENTIFIER             #playerCallExpression
+    | IDENTIFIER                        #variableCallExpression
+    | LBRACKET expression RBRACKET      #paranthesizedExpression
+    | MINUS expression                  #negativeExpression
+    | NOT expression                    #notExpression
+    | expression MULTOP expression      #multiplicativeExpression
+    | expression ADDOP expression       #additiveExpression
+    | expression COMPAREOP expression   #comparisonExpression
+    | expression BOOLOP expression      #booleanExpression
+    ;
+
+code: variableDeclaration | assignment;
+
+variableDeclaration: VAR assignment;
+assignment: IDENTIFIER ASSIGNMENT expression SEMICOLON;
+
+story: start scene* end;
+
+start: SCENE START LBRACE write (choices | goTo) RBRACE;
+end: SCENE END LBRACE write RBRACE;
+scene: SCENE IDENTIFIER LBRACE write (choices | goTo) RBRACE;
+
+write: WRITE COLON expression SEMICOLON;
+
+choices:CHOICES LBRACE choice+ RBRACE;
+
+choice: IDENTIFIER LBRACE choiceText goTo RBRACE;
+
+choiceText: TEXT COLON expression SEMICOLON;
+
+goTo: GOTO COLON (IDENTIFIER | START | END) SEMICOLON;
+
+literal: number | STRING | BOOL;
+
+number: INT | INT POINT INT;
+
+MULTOP: MULTIPLY | DIVIDE;
+ADDOP: PLUS | MINUS;
+COMPAREOP: EQUALS | NOTEQUALS | GREATER | LESS | GREATEREQUAL | LESSEQUAL;
+BOOLOP: AND | OR;
+
+INT: [0-9]+;
+STRING: ('"' ~'"'* '"') | ('\'' ~'\''* '\'');
+BOOL: TRUE | FALSE;
+
+WS: [ \t\r\n]+ -> skip;
+START: 'START';
+END: 'END';
+SCENE: 'SCENE ';
+PLAYER: 'PLAYER';
+LBRACE: '{';
+RBRACE: '}';
+COLON: ':';
+SEMICOLON: ';';
+PLAYERCALL: 'PLAYER.';
+LBRACKET: '(';
+RBRACKET: ')';
+MINUS: '-';
+NOT: '!';
+VAR: 'var ';
+ASSIGNMENT: '=';
+WRITE: 'write';
+CHOICES: 'choices';
+TEXT:'text';
+GOTO: 'goto';
+POINT: '.';
+MULTIPLY: '*';
+DIVIDE: '/';
+PLUS: '+';
+EQUALS: '==';
+NOTEQUALS: '!=';
+GREATER: '>';
+LESS: '<';
+GREATEREQUAL: '>=';
+LESSEQUAL: '<=';
+AND: 'and';
+OR: 'OR';
+TRUE: 'true';
+FALSE: 'false';
+
+IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;

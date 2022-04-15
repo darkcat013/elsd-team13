@@ -137,14 +137,10 @@ namespace SimpleStoryMaker
             var left = Visit(context.expression(0));
             var right = Visit(context.expression(1));
             var op = context.ADDOP().GetText();
-            if (!(left is string || right is string) && !(left is double && right is double))
-                switch (op)
-                {
-                    case "+": AddError(context.expression(0).Start, $"Cannot add values of types '{left?.GetType()}' and '{right?.GetType()}'"); break;
-                    case "-": AddError(context.expression(0).Start, $"Cannot subtract values of types '{left?.GetType()}' and '{right?.GetType()}'"); break;
-                    default:
-                        break;
-                }
+            if (!(left is string || right is string) && !(left is double && right is double) && op == "+")
+                AddError(context.expression(0).Start, $"Cannot add values of types '{left?.GetType()}' and '{right?.GetType()}'");
+            else if(!(left is double && right is double) && op == "-")
+                AddError(context.expression(0).Start, $"Cannot subtract values of types '{left?.GetType()}' and '{right?.GetType()}'");
             else
             {
                 return op switch
