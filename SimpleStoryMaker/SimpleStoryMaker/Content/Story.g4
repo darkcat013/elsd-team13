@@ -56,7 +56,7 @@ write: 'write'':'expression';';
 choices:'choices''{'choice+'}';
 
 choice: choiceCondition? IDENTIFIER'{'choiceScope'}';
-choiceScope: localCode* choiceText (goTo | write);
+choiceScope: localScope choiceText (goTo | write);
 
 choiceCondition: 'if ' expression;
 choiceText: 'text'':'expression';';

@@ -1,6 +1,6 @@
 grammar Story;
 
-program: player code* story EOF;
+program: player globalCode* story EOF;
 
 player: PLAYER LBRACE attribute* RBRACE;
 
@@ -8,6 +8,7 @@ attribute: IDENTIFIER COLON expression SEMICOLON;
 
 expression
     : literal                           #literalExpression
+    | function                          #functionExpression
     | PLAYERCALL IDENTIFIER             #playerCallExpression
     | IDENTIFIER                        #variableCallExpression
     | LBRACKET expression RBRACKET      #paranthesizedExpression
@@ -19,23 +20,44 @@ expression
     | expression BOOLOP expression      #booleanExpression
     ;
 
-code: variableDeclaration | assignment;
+globalCode: code | globalDeclaration;
+localCode: code | localDeclaration;
+code: assignment | ifBlock | whileBlock | playerAttributeAssignment ;
 
-variableDeclaration: VAR assignment;
+globalDeclaration: VAR assignment;
+localDeclaration: LOCAL assignment;
+
 assignment: IDENTIFIER ASSIGNMENT expression SEMICOLON;
+playerAttributeAssignment: PLAYERCALL IDENTIFIER ASSIGNMENT expression SEMICOLON;
+
+if: IF expression LBRACE localScope RBRACE;
+elif: ELIF expression LBRACE localScope RBRACE;
+else: ELSE LBRACE localScope RBRACE;
+
+whileBlock: WHILE expression LBRACE localScope RBRACE;
+
+function: rand_func;
+
+rand_func: RAND LBRACKET expression COLON expression RBRACKET;
 
 story: start scene* end;
 
-start: SCENE START LBRACE write (choices | goTo) RBRACE;
-end: SCENE END LBRACE write RBRACE;
-scene: SCENE IDENTIFIER LBRACE write (choices | goTo) RBRACE;
+start: SCENE START LBRACE sceneScope RBRACE;
+end: SCENE END LBRACE endSceneScope RBRACE;
+scene: SCENE IDENTIFIER LBRACE sceneScope RBRACE;
+
+sceneScope : localScope write (choices | goTo);
+endSceneScope: localScope write;
+localScope: localCode*;
 
 write: WRITE COLON expression SEMICOLON;
 
 choices:CHOICES LBRACE choice+ RBRACE;
 
-choice: IDENTIFIER LBRACE choiceText goTo RBRACE;
+choice: choiceCondition? IDENTIFIER LBRACE choiceText goTo RBRACE;
 
+choiceScope: localCode* choiceText (goTo | write);
+choiceCondition: IF expression;
 choiceText: TEXT COLON expression SEMICOLON;
 
 goTo: GOTO COLON (IDENTIFIER | START | END) SEMICOLON;
@@ -68,6 +90,7 @@ RBRACKET: ')';
 MINUS: '-';
 NOT: '!';
 VAR: 'var ';
+LOCAL: 'local ';
 ASSIGNMENT: '=';
 WRITE: 'write';
 CHOICES: 'choices';
@@ -87,5 +110,7 @@ AND: 'and';
 OR: 'OR';
 TRUE: 'true';
 FALSE: 'false';
-
+IF: 'if ';
+ELIF: 'elif ';
+ELSE: 'else ';
 IDENTIFIER: [a-zA-Z_][a-zA-Z0-9_]*;
