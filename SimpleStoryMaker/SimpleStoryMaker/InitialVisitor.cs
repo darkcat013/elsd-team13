@@ -14,8 +14,12 @@ namespace SimpleStoryMaker
         public List<string> SemanticErrors { get; private set; } = new();
         public Dictionary<string, object> Variables { get; set; } = new();
 
+        protected int LocalScope = 0;
+        protected Dictionary<string, object> LocalVariables { get; set; } = new();
+
         private readonly List<StoryParser.GoToContext> _goTos = new();
 
+        
         public override object? VisitAttribute(StoryParser.AttributeContext context)
         {
             var key = context.IDENTIFIER().GetText();
@@ -75,6 +79,15 @@ namespace SimpleStoryMaker
             return base.VisitChoices(context);
         }
 
+        public override object? VisitChoiceCondition(StoryParser.ChoiceConditionContext context)
+        {
+            var expression = Visit(context.expression());
+            if (expression is not bool)
+            {
+                AddError(context.expression().Start, $"Choice if condition must be boolean, found {expression?.GetType()}");
+            }
+            return base.VisitChoiceCondition(context);
+        }
         public override object? VisitGoTo(StoryParser.GoToContext context)
         {
             if (context.IDENTIFIER() is { } id)
@@ -199,7 +212,7 @@ namespace SimpleStoryMaker
             return base.VisitPlayerCallExpression(context);
         }
 
-        public override object? VisitVariableDeclaration(StoryParser.VariableDeclarationContext context)
+        public override object? VisitGlobalDeclaration(StoryParser.GlobalDeclarationContext context)
         {
             var variable = context.assignment().IDENTIFIER().Symbol;
             if (Variables.ContainsKey(variable.Text))
@@ -208,30 +221,82 @@ namespace SimpleStoryMaker
             {
                 Variables[variable.Text] = Visit(context.assignment().expression())!;
             }
-            return base.VisitVariableDeclaration(context);
+            return null;
         }
 
+        public override object? VisitLocalDeclaration(StoryParser.LocalDeclarationContext context)
+        {
+            var variable = context.assignment().IDENTIFIER().Symbol;
+            if (Variables.ContainsKey(variable.Text) || LocalVariables.ContainsKey(variable.Text))
+                AddError(variable, $"Variable already declared: '{variable.Text}'");
+            else
+            {
+                LocalVariables[variable.Text] = Visit(context.assignment().expression())!;
+            }
+            return null;
+        }
+
+        public override object? VisitSceneScope(StoryParser.SceneScopeContext context)
+        {
+            LocalScope++;
+            base.VisitSceneScope(context);
+            LocalScope--;
+            if (LocalScope == 0) LocalVariables = new();
+            return null;
+        }
+
+        public override object? VisitEndSceneScope(StoryParser.EndSceneScopeContext context)
+        {
+            LocalScope++;
+            base.VisitEndSceneScope(context);
+            LocalScope--;
+            if (LocalScope == 0) LocalVariables = new();
+            return null;
+        }
+
+        public override object? VisitChoiceScope(StoryParser.ChoiceScopeContext context)
+        {
+            LocalScope++;
+            base.VisitChoiceScope(context);
+            LocalScope--;
+            if (LocalScope == 0) LocalVariables = new();
+            return null;
+        }
         public override object? VisitAssignment(StoryParser.AssignmentContext context)
         {
             var variable = context.IDENTIFIER().Symbol;
-            if (!Variables.ContainsKey(variable.Text))
-                AddError(variable, $"Variable does not exist: '{variable.Text}'");
+            if (LocalScope>0)
+            {
+                if (!LocalVariables.ContainsKey(variable.Text) && !Variables.ContainsKey(variable.Text))
+                    AddError(variable, $"Variable does not exist: '{variable.Text}'");
+            }
             else
             {
-                Variables[variable.Text] = Visit(context.expression())!;
+                if (!Variables.ContainsKey(variable.Text))
+                    AddError(variable, $"Variable does not exist: '{variable.Text}'");
             }
             return base.VisitAssignment(context);
+        }
+        public override object? VisitPlayerAttributeAssignment(StoryParser.PlayerAttributeAssignmentContext context)
+        {
+            var attribute = context.IDENTIFIER().Symbol;
+            if (!Player.ContainsKey(attribute.Text))
+            {
+                AddError(attribute, $"Player attribute does not exist: {attribute.Text}");
+            }
+            return base.VisitPlayerAttributeAssignment(context);
         }
 
         public override object? VisitVariableCallExpression(StoryParser.VariableCallExpressionContext context)
         {
             var variable = context.IDENTIFIER().Symbol;
-            if (!Variables.ContainsKey(variable.Text))
+            if (!Variables.ContainsKey(variable.Text) && !LocalVariables.ContainsKey(variable.Text))
                 AddError(variable, $"Variable does not exist: '{variable.Text}'");
-            else if (Variables[variable.Text] is null)
-                AddError(variable, $"Variable not initialized: '{variable.Text}'");
+            else if(LocalScope>0 && LocalVariables.ContainsKey(variable.Text))
+                return LocalVariables[variable.Text];
             else
                 return Variables[variable.Text];
+
             return base.VisitVariableCallExpression(context);
         }
 
@@ -285,7 +350,57 @@ namespace SimpleStoryMaker
             }
             return base.VisitBooleanExpression(context);
         }
-        #region protected methods
+
+        public override object? VisitIf(StoryParser.IfContext context)
+        {
+            var expression = Visit(context.expression());
+            if(expression is not bool)
+            {
+                var symbol = context.expression().Start;
+                AddError(symbol, $"If expression must be boolean, found {expression?.GetType()}");
+            }
+            return base.VisitIf(context);
+        }
+
+        public override object? VisitElif(StoryParser.ElifContext context)
+        {
+            var expression = Visit(context.expression());
+            if (expression is not bool)
+            {
+                var symbol = context.expression().Start;
+                AddError(symbol, $"Elif expression must be boolean, found {expression?.GetType()}");
+            }
+            return base.VisitElif(context);
+        }
+
+        public override object? VisitWhileBlock(StoryParser.WhileBlockContext context)
+        {
+            var expression = Visit(context.expression());
+            if (expression is not bool)
+            {
+                var symbol = context.expression().Start;
+                AddError(symbol, $"While expression must be boolean, found {expression?.GetType()}");
+            }
+            return base.VisitWhileBlock(context);
+        }
+
+        public override object? VisitRand_func([NotNull] StoryParser.Rand_funcContext context)
+        {
+            var p1 = Visit(context.expression(0));
+            var p2 = Visit(context.expression(1));
+            if(p1 is not double)
+            {
+                var symbol = context.expression(0).Start;
+                AddError(symbol, $"Parameter 1 of function RAND should be a number, found {p1?.GetType()}");
+            }
+            if (p2 is not double)
+            {
+                var symbol = context.expression(1).Start;
+                AddError(symbol, $"Parameter 2 of function RAND should be a number, found {p2?.GetType()}");
+            }
+            return base.VisitRand_func(context);
+        }
+        #region private methods
         private static (int, int) GetPosition(IToken symbol)
         {
             return (symbol.Line, symbol.Column + 1);
@@ -307,7 +422,8 @@ namespace SimpleStoryMaker
                     AddError(symbol, $"Scene '{symbol.Text}' does not exist.");
             }
         }
-
+        #endregion
+        #region protected methods
         protected static object? Multiply(object? left, object? right)
         {
             if (left is double l && right is double r)

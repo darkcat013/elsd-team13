@@ -1,55 +1,81 @@
 ﻿PLAYER{
-    name:"";
-    hp:100;
-    ad:true == false;
+    name:"Noroc";
+    hasKey: false;
 }
 
-var asd = !(true or true);
-var c = 100;
-var b = -(2 * c / 5);
+var observedTable = false;
+var doorUnlocked = false;
+var attempts = 0;
 
 SCENE START{
-    write:"";
+    local s = "";
+    if observedTable {s = "You see a door and a broken table.";}
+    else {s = "You see a door and a very old table";}
+    write: s;
     choices{
-        r{
-            text:"Go right " + b;
+        door{
+            text: "go to the door";
+            goto: door;
+        }
+        table{
+            text: "go to the table";
+            goto: table;
+        }
+    }
+}
+
+SCENE door{
+    write: "you are in front of a door.";
+    choices{
+        if PLAYER.hasKey unlock{
+            PLAYER.hasKey = false;
+            doorUnlocked = true;
+            text: "Unlock the door";
+            write: "Succesfully unlocked the door";
+        }
+        if doorUnlocked or attempts>5 exit{
+            text: "exit building";
+            goto: END;
+        }
+        if !doorUnlocked open{
+            attempts = attempts + 1;
+            local s = "";
+            if attempts > 5 {s = "you broke the door"; doorUnlocked = true;}
+            else {s = "door is locked";}
+            text: "try to open the door";
+            write: s;
+        }
+        back{
+            text: "go back";
             goto: START;
         }
-        left{
-            text:"Go left " + asd;
-            goto: left;
-        }
     }
 }
 
-SCENE left{
-    write:"the left";
+SCENE table{
+    local s = "";
+    if observedTable {s="Why did you break it?";}
+    else {s = "you are in front of an old table";}
+    write: s;
     choices{
-        f{
-            text: "go further";
-            goto:further;
+        if !observedTable inspect{
+            observedTable = true;
+            PLAYER.hasKey = true;
+            text: "inspect the table";
+            write: "you broke the table but got a key";
+        }
+        if observedTable look{
+            text: "look at the broken table";
+            write: "you dont regret it";
+        }
+        back{
+            text: "go back";
+            goto: START;
         }
     }
 }
 
-SCENE further{
-    write:"go to end or the start";
-    choices{
-        x{
-            text:"go end";
-            goto:almostEnd;
-        }
-        start{
-            text:"go start";
-            goto:START;
-        }
-    }
-}
-
-SCENE almostEnd{
-    write:"Almost there";
-    goto: END;
-}
 SCENE END{
-    write:"you've reached the end";
+    PLAYER.name = PLAYER.name + " V";
+    write:"Congrats " + PLAYER.name + PLAYER.hasKey;
 }
